@@ -1,0 +1,116 @@
+---
+import ProtectedLayout from '../layouts/ProtectedLayout.astro'
+import { getCustomPosts } from '../utils/fetchContent.js';
+import { Icon } from "astro-icon/components";
+import 'material-symbols';
+
+// Rimuovi il controllo della sessione poiché ora è gestito dal ProtectedLayout
+const customPosts = await getCustomPosts()
+
+// Funzione per ottenere gli attachment
+async function getAttachmentUrl(attachmentEndpoint) {
+  try {
+    const response = await fetch(attachmentEndpoint);
+    const attachments = await response.json();
+    if (attachments && attachments.length > 0) {
+      return {
+        url: attachments[0].source_url,
+        mime_type: attachments[0].mime_type
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Errore nel recupero dell\'attachment:', error);
+    return null;
+  }
+}
+
+// Recupera gli URL degli attachment per ogni post
+const postsWithAttachments = await Promise.all(
+  customPosts.map(async (post) => {
+    const attachmentUrl = await getAttachmentUrl(post._links['wp:attachment'][0].href);
+    return { ...post, attachmentUrl };
+  })
+);
+
+// Funzione per determinare l'icona in base al MIME type
+function getFileIcon(mimeType) {
+  if (mimeType.startsWith('image/')) {
+    return 'material-symbols:image';
+  } else if (mimeType === 'application/pdf') {
+    return 'material-symbols:picture-as-pdf';
+  } else if (mimeType.startsWith('application/msword') || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    return 'material-symbols:description';
+  } else if (mimeType.startsWith('application/vnd.ms-excel') || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    return 'material-symbols:table-view';
+  } else {
+    return 'material-symbols:insert-drive-file';
+  }
+}
+
+// Funzione per formattare la data
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+---
+
+<ProtectedLayout>
+  <div class="flex justify-center p-6">
+    <table class="min-w-[50%] bg-white shadow-md rounded-lg overflow-hidden">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+            Tipo
+          </th>
+          <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+            Titolo
+          </th>
+          <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+            Descrizione
+          </th>
+          <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+            Data
+          </th>
+          <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+            Download
+          </th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        {postsWithAttachments.map((post) => (
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              {post.attachmentUrl && (
+                <Icon 
+                  name={getFileIcon(post.attachmentUrl.mime_type)} 
+                  class="w-6 h-6 text-gray-600"
+                />
+              )}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">{post.title.rendered}</td>
+            <td class="px-6 py-4">{post.acf.descrizione}</td>
+            <td class="px-6 py-4 whitespace-nowrap">{formatDate(post.date)}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              {post.attachmentUrl && (
+                <a 
+                  href={post.attachmentUrl.url} 
+                  target="_blank" 
+                  download={post.attachmentUrl.mime_type.startsWith('application/')}
+                  class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  <Icon name="material-symbols:download" class="w-5 h-5" />
+                  {post.attachmentUrl.mime_type.startsWith('image/') ? 'Visualizza Immagine' : 'Scarica il File'}
+                </a>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</ProtectedLayout>

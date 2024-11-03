@@ -1,16 +1,53 @@
 ---
+import { getPosts , getCustomPosts, getNewsOperatori } from '../utils/fetchContent.js';
 
+const posts = await getPosts();
+const customPosts = await getCustomPosts();
+const newsOperatori = await getNewsOperatori();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<main>
+	<h1>Blog</h1>
+	{posts.map(post => (
+	  <article>
+		{post.featured_media && (
+		  <img 
+			src={post._embedded?.['wp:featuredmedia']?.[0]?.source_url} 
+			alt={post._embedded?.['wp:featuredmedia']?.[0]?.alt_text || ''} 
+		  />
+		)}
+		<h2>{post.title.rendered}</h2>
+		<div set:html={post.content.rendered} />
+	  </article>
+	))}
+
+<h1>Custom Posts</h1>
+{customPosts.map(customPost => (
+  <article>
+	<h2>{customPost.title.rendered}</h2>
+  </article>
+))}
+
+<h1>News Operatori</h1>
+{newsOperatori.map(newsOperatore => (
+  <article >
+	{newsOperatore.featured_media && (
+		  <img 
+			src={newsOperatore._embedded?.['wp:featuredmedia']?.[0]?.source_url} 
+			alt={newsOperatore._embedded?.['wp:featuredmedia']?.[0]?.alt_text || ''} 
+		  />
+		)}
+	<h2>{newsOperatore.title.rendered}</h2>
+	<div set:html={newsOperatore.excerpt.rendered} />
+
+  </article>
+))}
+</main>
+
+
+<style>
+	img {
+	  max-width: 100%;
+	  height: auto;
+	}
+  </style>
